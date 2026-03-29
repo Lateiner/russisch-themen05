@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Lernspiel: Berufe & Orte</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            max-width: 900px;
+            width: 100%;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; font-size: 1.8rem; color: var(--primary); }
+        p.instruction { color: #666; margin-top: 8px; font-size: 1.1rem; }
+
+        /* Neustart Button Styling */
+        .btn-restart {
+            margin-top: 15px;
+            padding: 10px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            background-color: var(--accent);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-restart:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-restart:active {
+            transform: translateY(0);
+        }
+
+        /* Bild-Pool */
+        .image-pool {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 15px;
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px dashed #bdc3c7;
+            margin-bottom: 40px;
+            min-height: 120px;
+        }
+
+        .img-card {
+            aspect-ratio: 3 / 2;
+            background-size: cover;
+            background-position: center;
+            background-color: #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 4px solid transparent;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .img-card:hover { transform: translateY(-5px); }
+        .img-card.selected { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); }
+
+        /* Ziel-Bereiche */
+        .target-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .slot {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slot:hover { border-color: #ccc; background: #fafafa; }
+
+        .slot.correct {
+            background: #eafaf1;
+            border-color: var(--success);
+            cursor: default;
+        }
+
+        .drop-zone {
+            width: 110px;
+            height: 75px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .slot-label {
+            margin-top: 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Animationen */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .error-shake { animation: shake 0.4s ease; border-color: var(--error) !important; background: #fdedec !important; }
+
+        /* Mobile Optimierung */
+        @media (max-width: 600px) {
+            .target-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .img-card, .drop-zone { width: 90px; height: 60px; }
+            .slot-label { font-size: 1rem; }
+            h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Где они работают?</h1>
+        <p class="instruction">Klicke ein Bild an und dann den richtigen Ort.</p>
+        <button class="btn-restart" id="restartBtn">Neustart / Заново</button>
+    </header>
+
+    <div class="image-pool" id="pool"></div>
+
+    <div class="target-grid">
+        <div class="slot" data-id="bank">
+            <div class="drop-zone"></div>
+            <div class="slot-label">банк</div>
+        </div>
+        <div class="slot" data-id="bibliothek">
+            <div class="drop-zone"></div>
+            <div class="slot-label">библиотека</div>
+        </div>
+        <div class="slot" data-id="office">
+            <div class="drop-zone"></div>
+            <div class="slot-label">офис</div>
+        </div>
+        <div class="slot" data-id="hospital">
+            <div class="drop-zone"></div>
+            <div class="slot-label">больница</div>
+        </div>
+        <div class="slot" data-id="post">
+            <div class="drop-zone"></div>
+            <div class="slot-label">почта</div>
+        </div>
+        <div class="slot" data-id="restaurant">
+            <div class="drop-zone"></div>
+            <div class="slot-label">ресторан</div>
+        </div>
+        <div class="slot" data-id="schule">
+            <div class="drop-zone"></div>
+            <div class="slot-label">школа</div>
+        </div>
+        <div class="slot" data-id="universitaet">
+            <div class="drop-zone"></div>
+            <div class="slot-label">университет</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const items = [
+        { id: 'bank', file: 'bank.jpg' },
+        { id: 'bibliothek', file: 'bibliothek.jpg' },
+        { id: 'office', file: 'office.jpg' },
+        { id: 'hospital', file: 'hospital.jpg' },
+        { id: 'post', file: 'post.jpg' },
+        { id: 'restaurant', file: 'restaurant.jpg' },
+        { id: 'schule', file: 'schule.jpg' },
+        { id: 'universitaet', file: 'universitaet.jpg' }
+    ];
+
+    let selectedElement = null;
+
+    function initGame() {
+        const pool = document.getElementById('pool');
+        const slots = document.querySelectorAll('.slot');
+        
+        // Spielzustand komplett zurücksetzen
+        pool.innerHTML = '';
+        selectedElement = null;
+        
+        slots.forEach(slot => {
+            slot.classList.remove('correct');
+            slot.querySelector('.drop-zone').innerHTML = '';
+        });
+
+        // Bilder mischen
+        const shuffled = [...items].sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'img-card';
+            card.dataset.id = item.id;
+            card.style.backgroundImage = `url('${item.file}')`;
+            
+            card.onclick = (e) => {
+                e.stopPropagation();
+                if (slotVoll(card)) return; // Falls Bild bereits in Slot ist, Klick ignorieren
+                
+                if (selectedElement) selectedElement.classList.remove('selected');
+                selectedElement = card;
+                card.classList.add('selected');
+            };
+            pool.appendChild(card);
+        });
+    }
+
+    // Hilfsfunktion: Prüfen ob Bild bereits zugeordnet ist
+    function slotVoll(card) {
+        return card.parentElement.classList.contains('drop-zone');
+    }
+
+    // Slot-Logik initialisieren (einmalig)
+    document.querySelectorAll('.slot').forEach(slot => {
+        slot.onclick = () => {
+            if (!selectedElement || slot.classList.contains('correct')) return;
+
+            if (selectedElement.dataset.id === slot.dataset.id) {
+                // RICHTIG
+                slot.classList.add('correct');
+                const zone = slot.querySelector('.drop-zone');
+                selectedElement.classList.remove('selected');
+                selectedElement.style.transform = "none";
+                zone.appendChild(selectedElement);
+                selectedElement = null;
+                checkWin();
+            } else {
+                // FALSCH
+                slot.classList.add('error-shake');
+                setTimeout(() => slot.classList.remove('error-shake'), 400);
+            }
+        };
+    });
+
+    function checkWin() {
+        const finished = document.querySelectorAll('.slot.correct').length;
+        if (finished === items.length) {
+            setTimeout(() => {
+                alert("Отлично! (Hervorragend!) Du hast alle Orte richtig zugeordnet.");
+            }, 500);
+        }
+    }
+
+    // Event Listener für Neustart Button
+    document.getElementById('restartBtn').addEventListener('click', initGame);
+
+    // Erststart
+    initGame();
+</script>
+
+</body>
+</html>
