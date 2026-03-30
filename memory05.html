@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Lernspiel: Berufe-Memory</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f0f4f8;
+            --card-back: #34495e;
+            /* Farben für die Paare zur Lösungskontrolle */
+            --pair-0: #ffadad; --pair-1: #ffd6a5; --pair-2: #fdffb6; --pair-3: #caffbf;
+            --pair-4: #9bf6ff; --pair-5: #a0c4ff; --pair-6: #bdb2ff; --pair-7: #ffc6ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 850px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; }
+        
+        .stats { 
+            font-size: 1.2rem; 
+            margin-bottom: 20px; 
+            font-weight: bold; 
+            color: var(--primary);
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .controls {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-restart { background: var(--accent); color: white; }
+        .btn-solution { background: #95a5a6; color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+
+        /* Memory-Grid */
+        .memory-game {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            perspective: 1000px;
+        }
+
+        .memory-card {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            cursor: pointer;
+            border-radius: 12px;
+        }
+
+        .memory-card.flip { transform: rotateY(180deg); }
+
+        /* Wenn gefunden: Sanftes Verschwinden */
+        .memory-card.matched {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.3) rotateY(180deg);
+            transition: all 0.7s ease;
+        }
+
+        .front-face, .back-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            border-radius: 12px;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: 5px solid white;
+            box-sizing: border-box;
+        }
+
+        /* Vorderseite (Inhalt) */
+        .front-face {
+            background: white;
+            transform: rotateY(180deg);
+        }
+
+        .front-face img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .front-face span {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-align: center;
+            padding: 5px;
+            word-break: break-word;
+        }
+
+        /* Rückseite (Verdeckt) */
+        .back-face {
+            background: var(--card-back);
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        /* Farbkennzeichnung für Paare (Lösung) */
+        .pair-0 { border-color: var(--pair-0) !important; }
+        .pair-1 { border-color: var(--pair-1) !important; }
+        .pair-2 { border-color: var(--pair-2) !important; }
+        .pair-3 { border-color: var(--pair-3) !important; }
+        .pair-4 { border-color: var(--pair-4) !important; }
+        .pair-5 { border-color: var(--pair-5) !important; }
+        .pair-6 { border-color: var(--pair-6) !important; }
+        .pair-7 { border-color: var(--pair-7) !important; }
+
+        /* Responsivität */
+        @media (max-width: 700px) {
+            .memory-game { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+            .front-face span { font-size: 0.9rem; }
+        }
+
+        @media (max-width: 500px) {
+            .memory-game { grid-template-columns: repeat(3, 1fr); }
+            .stats { font-size: 1rem; }
+            button { padding: 10px 15px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Профессии: Memory</h1>
+    
+    <div class="stats">Найдено пар: <span id="match-count">0</span> / 8</div>
+
+    <div class="controls">
+        <button class="btn-restart" onclick="resetGame()">Заново (Neustart)</button>
+        <button class="btn-solution" id="solutionBtn">Показать ответ (Lösung)</button>
+    </div>
+
+    <div class="memory-game" id="game-board"></div>
+</div>
+
+<script>
+    const occupations = [
+        { id: 0, word: 'официант', img: 'kellner.jpg' },
+        { id: 1, word: 'водитель', img: 'fahrer.jpg' },
+        { id: 2, word: 'врач', img: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&q=80' },
+        { id: 3, word: 'преподаватель', img: 'https://images.unsplash.com/photo-1544531585-9847b68c8c86?w=200&q=80' },
+        { id: 4, word: 'повар', img: 'https://images.unsplash.com/photo-1577106263724-2c8e03bfe9cf?w=200&q=80' },
+        { id: 5, word: 'инженер', img: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=200&q=80' },
+        { id: 6, word: 'менеджер', img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&q=80' },
+        { id: 7, word: 'секретарь', img: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=200&q=80' }
+    ];
+
+    let hasFlippedCard = false;
+    let lockBoard = false;
+    let firstCard, secondCard;
+    let matchesFound = 0;
+    let solutionShown = false;
+
+    function createBoard() {
+        const board = document.getElementById('game-board');
+        let cards = [];
+
+        occupations.forEach(occ => {
+            cards.push(createCard(occ, 'img'));
+            cards.push(createCard(occ, 'word'));
+        });
+
+        // Mischen
+        cards.sort(() => Math.random() - 0.5);
+        cards.forEach(card => board.appendChild(card));
+    }
+
+    function createCard(data, type) {
+        const card = document.createElement('div');
+        card.classList.add('memory-card');
+        card.dataset.id = data.id;
+
+        const front = document.createElement('div');
+        front.classList.add('front-face', `pair-${data.id}`);
+
+        if (type === 'img') {
+            const img = document.createElement('img');
+            img.src = data.img;
+            img.alt = "Beruf";
+            // Fallback falls Bildpfad nicht stimmt
+            img.onerror = () => { front.innerHTML = `<span>BILD FEHLT<br>(${data.word})</span>`; };
+            front.appendChild(img);
+        } else {
+            const span = document.createElement('span');
+            span.textContent = data.word;
+            front.appendChild(span);
+        }
+
+        const back = document.createElement('div');
+        back.classList.add('back-face');
+        back.textContent = "?";
+
+        card.appendChild(front);
+        card.appendChild(back);
+        card.addEventListener('click', flipCard);
+        return card;
+    }
+
+    function flipCard() {
+        if (lockBoard || solutionShown) return;
+        if (this === firstCard) return;
+
+        this.classList.add('flip');
+
+        if (!hasFlippedCard) {
+            hasFlippedCard = true;
+            firstCard = this;
+            return;
+        }
+
+        secondCard = this;
+        checkForMatch();
+    }
+
+    function checkForMatch() {
+        let isMatch = firstCard.dataset.id === secondCard.dataset.id;
+        isMatch ? disableCards() : unflipCards();
+    }
+
+    function disableCards() {
+        lockBoard = true;
+        matchesFound++;
+        document.getElementById('match-count').textContent = matchesFound;
+
+        setTimeout(() => {
+            firstCard.classList.add('matched');
+            secondCard.classList.add('matched');
+            resetBoard();
+            if (matchesFound === occupations.length) {
+                setTimeout(() => alert("Отлично! (Hervorragend!)"), 500);
+            }
+        }, 800);
+    }
+
+    function unflipCards() {
+        lockBoard = true;
+        setTimeout(() => {
+            firstCard.classList.remove('flip');
+            secondCard.classList.remove('flip');
+            resetBoard();
+        }, 1200);
+    }
+
+    function resetBoard() {
+        [hasFlippedCard, lockBoard] = [false, false];
+        [firstCard, secondCard] = [null, null];
+    }
+
+    // Lösung ein-/ausblenden
+    document.getElementById('solutionBtn').addEventListener('click', function() {
+        const cards = document.querySelectorAll('.memory-card:not(.matched)');
+        solutionShown = !solutionShown;
+        
+        cards.forEach(card => {
+            if (solutionShown) {
+                card.classList.add('flip');
+            } else {
+                card.classList.remove('flip');
+            }
+        });
+
+        this.textContent = solutionShown ? "Скрыть ответ" : "Показать ответ";
+        this.style.background = solutionShown ? "#e67e22" : "#95a5a6";
+    });
+
+    function resetGame() {
+        const board = document.getElementById('game-board');
+        board.innerHTML = '';
+        matchesFound = 0;
+        solutionShown = false;
+        document.getElementById('match-count').textContent = '0';
+        const solBtn = document.getElementById('solutionBtn');
+        solBtn.textContent = "Показать ответ";
+        solBtn.style.background = "#95a5a6";
+        resetBoard();
+        createBoard();
+    }
+
+    // Spielstart
+    createBoard();
+</script>
+
+</body>
+</html>
