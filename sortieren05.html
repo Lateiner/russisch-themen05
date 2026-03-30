@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Berufs-Suffixe sortieren</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #fdfdfd;
+            --basket-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0; font-size: 1.8rem; }
+        p.desc { color: #666; margin-top: 10px; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-restart { background: var(--accent); color: white; }
+        .btn-solution { background: #95a5a6; color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* Wort-Pool */
+        .word-pool {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 15px;
+            min-height: 80px;
+            margin-bottom: 40px;
+        }
+
+        .word-card {
+            background: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            font-size: 1.1rem;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .word-card.selected {
+            border-color: var(--accent);
+            background: #e1f5fe;
+            transform: scale(1.05);
+        }
+
+        .word-card.correct {
+            display: none; /* Verschwindet aus dem Pool, wenn richtig zugeordnet */
+        }
+
+        /* Körbe / Baskets */
+        .baskets-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .basket {
+            background: var(--basket-bg);
+            border: 3px solid #dee2e6;
+            border-radius: 15px;
+            padding: 15px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .basket:hover {
+            border-color: #ced4da;
+            background: #f1f3f5;
+        }
+
+        .basket-header {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 15px;
+            background: white;
+            padding: 5px 15px;
+            border-radius: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .basket-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .sorted-word {
+            background: #d4edda;
+            color: #155724;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1rem;
+            border: 1px solid #c3e6cb;
+            animation: popIn 0.3s ease;
+        }
+
+        /* Animationen */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .shake { animation: shake 0.4s ease; border-color: var(--error) !important; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .baskets-container { grid-template-columns: 1fr; }
+            .basket { min-height: 150px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Суффиксы профессий</h1>
+        <p class="desc">Klicke ein Wort an und wähle dann den passenden Korb (Endung) aus.</p>
+    </header>
+
+    <div class="controls">
+        <button class="btn-restart" onclick="initGame()">Заново (Neustart)</button>
+        <button class="btn-solution" id="solutionBtn">Lösung</button>
+    </div>
+
+    <div id="wordPool" class="word-pool"></div>
+
+    <div class="baskets-container">
+        <!-- Korb 1 -->
+        <div class="basket" data-suffix="-тель" onclick="checkMatch(this)">
+            <div class="basket-header">-тель</div>
+            <div class="basket-content" id="content-тель"></div>
+        </div>
+        <!-- Korb 2 -->
+        <div class="basket" data-suffix="-ист" onclick="checkMatch(this)">
+            <div class="basket-header">-ист</div>
+            <div class="basket-content" id="content-ист"></div>
+        </div>
+        <!-- Korb 3 -->
+        <div class="basket" data-suffix="-ер/-ор" onclick="checkMatch(this)">
+            <div class="basket-header">-ер / -ор</div>
+            <div class="basket-content" id="content-ер"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const vocabulary = [
+        { word: 'преподаватель', suffix: '-тель' },
+        { word: 'водитель', suffix: '-тель' },
+        { word: 'учитель', suffix: '-тель' },
+        { word: 'строитель', suffix: '-тель' },
+        { word: 'экономист', suffix: '-ист' },
+        { word: 'журналист', suffix: '-ист' },
+        { word: 'таксист', suffix: '-ист' },
+        { word: 'программист', suffix: '-ист' },
+        { word: 'инженер', suffix: '-ер/-ор' },
+        { word: 'менеджер', suffix: '-ер/-ор' },
+        { word: 'дизайнер', suffix: '-ер/-ор' },
+        { word: 'директор', suffix: '-ер/-ор' }
+    ];
+
+    let selectedWordElement = null;
+
+    function initGame() {
+        const pool = document.getElementById('wordPool');
+        pool.innerHTML = '';
+        selectedWordElement = null;
+
+        // Körbe leeren
+        document.querySelectorAll('.basket-content').forEach(c => c.innerHTML = '');
+        document.querySelectorAll('.basket').forEach(b => b.classList.remove('shake'));
+
+        // Wörter mischen
+        const shuffled = [...vocabulary].sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            card.textContent = item.word;
+            card.dataset.suffix = item.suffix;
+            card.onclick = (e) => {
+                e.stopPropagation();
+                selectWord(card);
+            };
+            pool.appendChild(card);
+        });
+    }
+
+    function selectWord(card) {
+        if (selectedWordElement) {
+            selectedWordElement.classList.remove('selected');
+        }
+        selectedWordElement = card;
+        card.classList.add('selected');
+    }
+
+    function checkMatch(basketElement) {
+        if (!selectedWordElement) return;
+
+        const correctSuffix = selectedWordElement.dataset.suffix;
+        const basketSuffix = basketElement.dataset.suffix;
+
+        if (correctSuffix === basketSuffix) {
+            // Richtig
+            const content = basketElement.querySelector('.basket-content');
+            const sortedWord = document.createElement('div');
+            sortedWord.className = 'sorted-word';
+            sortedWord.textContent = selectedWordElement.textContent;
+            content.appendChild(sortedWord);
+
+            selectedWordElement.classList.add('correct');
+            selectedWordElement = null;
+            checkWin();
+        } else {
+            // Falsch
+            basketElement.classList.add('shake');
+            setTimeout(() => basketElement.classList.remove('shake'), 400);
+        }
+    }
+
+    function checkWin() {
+        const remaining = document.querySelectorAll('.word-card:not(.correct)').length;
+        if (remaining === 0) {
+            setTimeout(() => alert("Отлично! (Hervorragend!) Alle Berufe sind richtig sortiert."), 300);
+        }
+    }
+
+    document.getElementById('solutionBtn').onclick = () => {
+        // Alle verbleibenden Wörter automatisch in die richtigen Körbe schieben
+        const words = document.querySelectorAll('.word-card:not(.correct)');
+        words.forEach(word => {
+            const suffix = word.dataset.suffix;
+            let targetId = 'content-ист';
+            if(suffix === '-тель') targetId = 'content-тель';
+            if(suffix === '-ер/-ор') targetId = 'content-ер';
+            
+            const content = document.getElementById(targetId);
+            const sortedWord = document.createElement('div');
+            sortedWord.className = 'sorted-word';
+            sortedWord.textContent = word.textContent;
+            content.appendChild(sortedWord);
+            word.classList.add('correct');
+        });
+    };
+
+    initGame();
+</script>
+
+</body>
+</html>
