@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Berufe Audio-Quiz</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f0f4f7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; font-size: 1.6rem; }
+        
+        /* Fortschrittsanzeige */
+        .progress-container {
+            margin: 20px 0;
+            font-weight: bold;
+            color: #666;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Audio Sektion */
+        .audio-section { margin-bottom: 25px; }
+        
+        .play-btn {
+            width: 80px;
+            height: 80px;
+            background-color: var(--accent);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 2.2rem;
+            color: white;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .play-btn:hover { transform: scale(1.08); background-color: #2980b9; }
+
+        /* Bilder Grid */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .image-card {
+            background: #fff;
+            border: 4px solid #eee;
+            border-radius: 15px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-card:hover { border-color: var(--accent); }
+
+        /* Feedback */
+        .correct { border-color: var(--success) !important; transform: scale(1.03); }
+        .wrong { border-color: var(--error) !important; animation: shake 0.4s ease; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .status { margin-top: 15px; font-weight: bold; min-height: 1.5em; font-size: 1.2rem; }
+
+        /* Restart Button */
+        .restart-btn {
+            margin-top: 20px;
+            padding: 15px 35px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            display: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+        .restart-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        @media (max-width: 600px) {
+            .image-grid { grid-template-columns: repeat(2, 1fr); }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Кто это? (Wer ist das?)</h1>
+    
+    <div class="progress-container">
+        Aufgabe <span id="current-task">1</span> von 6
+        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+    </div>
+
+    <div class="audio-section">
+        <button class="play-btn" id="playBtn" title="Hören">🔊</button>
+    </div>
+
+    <div class="image-grid" id="grid"></div>
+
+    <div class="status" id="statusMsg"></div>
+    <button onclick="startNewGame()" id="restartBtn" class="restart-btn">Заново (Neustart)</button>
+</div>
+
+<script>
+    const professions = [
+        { word: 'врач', file: 'arzt.jpg' },
+        { word: 'преподаватель', file: 'professor.jpg' },
+        { word: 'повар', file: 'koch.jpg' },
+        { word: 'инженер', file: 'ingenieur.jpg' },
+        { word: 'студент', file: 'student.jpg' },
+        { word: 'секретарь', file: 'sekretaerin.jpg' }
+    ];
+
+    let gameQueue = [];
+    let currentIndex = 0;
+    let currentTarget = null;
+    let russianMaleVoice = null;
+    let canClick = true;
+
+    function loadVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        russianMaleVoice = voices.find(v => v.lang.startsWith('ru') && 
+            (v.name.includes('Pavel') || v.name.includes('Maxim') || v.name.includes('Dmitry'))) 
+            || voices.find(v => v.lang.startsWith('ru'));
+    }
+
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function speak() {
+        if (!currentTarget) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(`Я ${currentTarget.word}`);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.8; 
+        utterance.pitch = 0.9;
+        if (russianMaleVoice) utterance.voice = russianMaleVoice;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function startNewGame() {
+        currentIndex = 0;
+        // Alle 6 Berufe in zufällige Reihenfolge bringen
+        gameQueue = [...professions].sort(() => Math.random() - 0.5);
+        document.getElementById('restartBtn').style.display = 'none';
+        document.getElementById('grid').style.pointerEvents = 'auto';
+        setupRound();
+    }
+
+    function setupRound() {
+        canClick = true;
+        currentTarget = gameQueue[currentIndex];
+        
+        // UI Update
+        document.getElementById('current-task').textContent = currentIndex + 1;
+        document.getElementById('progress-fill').style.width = ((currentIndex) / 6 * 100) + "%";
+        document.getElementById('statusMsg').textContent = '';
+        
+        // Grid erstellen (Bilder bei jeder Frage neu mischen)
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        const shuffledImages = [...professions].sort(() => Math.random() - 0.5);
+
+        shuffledImages.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'image-card';
+            card.innerHTML = `<img src="${p.file}" alt="Beruf">`;
+            card.onclick = () => checkAnswer(p, card);
+            grid.appendChild(card);
+        });
+
+        setTimeout(speak, 500);
+    }
+
+    function checkAnswer(chosen, element) {
+        if (!canClick) return;
+
+        if (chosen.word === currentTarget.word) {
+            canClick = false;
+            element.classList.add('correct');
+            document.getElementById('statusMsg').innerHTML = `<span style="color:var(--success)">Правильно! Я ${chosen.word}.</span>`;
+            
+            currentIndex++;
+            
+            setTimeout(() => {
+                if (currentIndex < 6) {
+                    setupRound();
+                } else {
+                    finishGame();
+                }
+            }, 1500);
+        } else {
+            element.classList.add('wrong');
+            setTimeout(() => element.classList.remove('wrong'), 400);
+            document.getElementById('statusMsg').innerHTML = `<span style="color:var(--error)">Попробуй ещё раз!</span>`;
+        }
+    }
+
+    function finishGame() {
+        document.getElementById('progress-fill').style.width = "100%";
+        document.getElementById('statusMsg').innerHTML = `<span style="color:var(--success)">Отлично! Вы прошли все задания.</span>`;
+        document.getElementById('restartBtn').style.display = 'inline-block';
+        document.getElementById('grid').style.pointerEvents = 'none';
+    }
+
+    document.getElementById('playBtn').onclick = speak;
+
+    // Initialer Start
+    loadVoices();
+    startNewGame();
+</script>
+
+</body>
+</html>
