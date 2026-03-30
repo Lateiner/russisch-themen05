@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Wahr oder Falsch?</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { color: var(--primary); font-size: 1.6rem; margin-bottom: 10px; }
+        
+        /* Audio-Bereich */
+        .audio-box {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent);
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn:hover { transform: scale(1.1); }
+        .audio-text-hint { font-size: 0.9rem; color: #7f8c8d; }
+
+        /* Statements */
+        .statement-card {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .statement-text {
+            font-size: 1.1rem;
+            color: var(--primary);
+            text-align: left;
+            padding-right: 15px;
+            flex: 1;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .choice-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            background: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-true:hover { border-color: var(--success); color: var(--success); }
+        .btn-false:hover { border-color: var(--error); color: var(--error); }
+
+        /* Feedback-Zustände */
+        .statement-card.answered-correct { background-color: #eafaf1; border-color: var(--success); }
+        .statement-card.answered-wrong { background-color: #fdedec; border-color: var(--error); }
+
+        .choice-btn.selected-true { background: var(--success); color: white; border-color: var(--success); }
+        .choice-btn.selected-false { background: var(--error); color: white; border-color: var(--error); }
+        
+        .disabled { pointer-events: none; opacity: 0.7; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .restart-btn {
+            padding: 12px 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .statement-card { flex-direction: column; text-align: center; gap: 15px; }
+            .statement-text { padding-right: 0; text-align: center; }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Правда или нет?</h1>
+        <p>Höre dir den Text an und entscheide: Wahr oder Falsch?</p>
+    </header>
+
+    <div class="audio-box">
+        <button class="play-btn" onclick="playAudio()">🔊</button>
+        <div class="audio-text-hint">Klicke hier, um Iras Geschichte zu hören.</div>
+    </div>
+
+    <div id="quiz-container">
+        <!-- Fragen werden hier generiert -->
+    </div>
+
+    <div class="footer">
+        <div id="final-score" style="margin-bottom: 15px; font-weight: bold; font-size: 1.2rem;"></div>
+        <button class="restart-btn" id="restartBtn" onclick="resetQuiz()">Заново (Neustart)</button>
+    </div>
+</div>
+
+<script>
+    const audioText = "Привет! Я Ира. Я училась в России, в Москве. Я училась в институте русского языка. Я окончила бакалавриат и магистратуру. Я работала в университете пять лет, но сейчас я работаю в онлайн-школе. Мне очень нравится моя профессия.";
+
+    const questions = [
+        { text: "Ира училась в России.", isTrue: true },
+        { text: "Ира училась в Берлине.", isTrue: false },
+        { text: "Ира окончила магистратуру.", isTrue: true },
+        { text: "Ира работала в банке.", isTrue: false },
+        { text: "Ира сейчас работает в онлайн-школе.", isTrue: true }
+    ];
+
+    let solvedCount = 0;
+    let correctCount = 0;
+
+    function playAudio() {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(audioText);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.85;
+        
+        // Versuche männliche oder weibliche Stimme zu finden (Browser-abhängig)
+        const voices = window.speechSynthesis.getVoices();
+        const russianVoice = voices.find(v => v.lang.startsWith('ru'));
+        if (russianVoice) utterance.voice = russianVoice;
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function createQuiz() {
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        
+        questions.forEach((q, index) => {
+            const card = document.createElement('div');
+            card.className = 'statement-card';
+            card.id = `card-${index}`;
+
+            card.innerHTML = `
+                <div class="statement-text">${q.text}</div>
+                <div class="actions">
+                    <button class="choice-btn btn-true" onclick="checkAnswer(${index}, true)" title="Wahr">✔</button>
+                    <button class="choice-btn btn-false" onclick="checkAnswer(${index}, false)" title="Falsch">✖</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function checkAnswer(index, userChoice) {
+        const card = document.getElementById(`card-${index}`);
+        const btns = card.querySelectorAll('.choice-btn');
+        const isCorrect = userChoice === questions[index].isTrue;
+
+        // Buttons deaktivieren
+        btns.forEach(btn => btn.classList.add('disabled'));
+
+        if (isCorrect) {
+            card.classList.add('answered-correct');
+            correctCount++;
+            btns[userChoice ? 0 : 1].classList.add(userChoice ? 'selected-true' : 'selected-false');
+        } else {
+            card.classList.add('answered-wrong');
+            btns[userChoice ? 0 : 1].classList.add(userChoice ? 'selected-true' : 'selected-false');
+        }
+
+        solvedCount++;
+        if (solvedCount === questions.length) {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        const scoreDiv = document.getElementById('final-score');
+        scoreDiv.textContent = `Ergebnis: ${correctCount} von ${questions.length} richtig!`;
+        document.getElementById('restartBtn').style.display = 'inline-block';
+    }
+
+    function resetQuiz() {
+        solvedCount = 0;
+        correctCount = 0;
+        document.getElementById('final-score').textContent = '';
+        document.getElementById('restartBtn').style.display = 'none';
+        createQuiz();
+    }
+
+    // Initialisierung
+    window.speechSynthesis.onvoiceschanged = () => {}; // Cache Stimmen
+    createQuiz();
+</script>
+
+</body>
+</html>
