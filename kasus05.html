@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Kasus-Sortiermaschine</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f0f2f5;
+            --location-color: #9b59b6; /* Lila für Orte */
+            --profession-color: #e67e22; /* Orange für Berufe */
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; font-size: 1.6rem; }
+        p.desc { color: #666; margin-bottom: 25px; }
+
+        /* Fortschritt */
+        .progress-container {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .progress-bar {
+            flex-grow: 1;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Wort-Pool */
+        .word-display {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            min-height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .active-word {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            color: var(--primary);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        /* Spalten-Layout */
+        .machine-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .drop-zone {
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 250px;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Stil für Ort-Box */
+        #loc-zone {
+            background: #f3e5f5;
+            border-color: #d1c4e9;
+        }
+        #loc-zone:hover { border-color: var(--location-color); }
+        #loc-zone .zone-title { color: var(--location-color); }
+
+        /* Stil für Berufs-Box */
+        #prof-zone {
+            background: #fff3e0;
+            border-color: #ffe0b2;
+        }
+        #prof-zone:hover { border-color: var(--profession-color); }
+        #prof-zone .zone-title { color: var(--profession-color); }
+
+        .zone-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .zone-sub {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+
+        .sorted-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .sorted-item {
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* Animationen */
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .error { animation: shake 0.4s ease; border-color: var(--error) !important; }
+
+        /* Neustart */
+        #restartBtn {
+            margin-top: 30px;
+            padding: 12px 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
+
+        /* Mobile Optimierung */
+        @media (max-width: 600px) {
+            .machine-grid { grid-template-columns: 1fr; }
+            .active-word { font-size: 1.4rem; }
+            .drop-zone { min-height: 180px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Kasus-Sortiermaschine</h1>
+    <p class="desc">Ist das ein <b>Ort</b> (Wo?) oder ein <b>Beruf</b> (Als was arbeiten?) Klicke auf die richtige Box.</p>
+
+    <div class="progress-container">
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <span id="stats">0 / 16</span>
+    </div>
+
+    <div class="word-display">
+        <div id="currentWord" class="active-word">Laden...</div>
+    </div>
+
+    <div class="machine-grid">
+        <!-- Kategorie: Ort (Präpositiv) -->
+        <div class="drop-zone" id="loc-zone" onclick="handleSort('loc')">
+            <div class="zone-title">Место (Ort)</div>
+            <div class="zone-sub">Präpositiv (в/на ... -е)</div>
+            <div id="loc-list" class="sorted-list"></div>
+        </div>
+
+        <!-- Kategorie: Beruf (Instrumental) -->
+        <div class="drop-zone" id="prof-zone" onclick="handleSort('prof')">
+            <div class="zone-title">Профессия (Beruf)</div>
+            <div class="zone-sub">Instrumental (...-ом/-ем)</div>
+            <div id="prof-list" class="sorted-list"></div>
+        </div>
+    </div>
+
+    <button id="restartBtn" onclick="initGame()">Neustart / Заново</button>
+</div>
+
+<script>
+    const data = [
+        // Orte (Präpositiv)
+        { word: "в банке", type: "loc" },
+        { word: "в офисе", type: "loc" },
+        { word: "в больнице", type: "loc" },
+        { word: "в школе", type: "loc" },
+        { word: "на почте", type: "loc" },
+        { word: "в ресторане", type: "loc" },
+        { word: "в университете", type: "loc" },
+        { word: "в библиотеке", type: "loc" },
+        // Berufe (Instrumental)
+        { word: "менеджером", type: "prof" },
+        { word: "врачом", type: "prof" },
+        { word: "учителем", type: "prof" },
+        { word: "инженером", type: "prof" },
+        { word: "поваром", type: "prof" },
+        { word: "официантом", type: "prof" },
+        { word: "секретарём", type: "prof" },
+        { word: "студентом", type: "prof" }
+    ];
+
+    let gameData = [];
+    let currentIdx = 0;
+    let solvedCount = 0;
+    let canClick = true;
+
+    function initGame() {
+        gameData = [...data].sort(() => Math.random() - 0.5);
+        currentIdx = 0;
+        solvedCount = 0;
+        canClick = true;
+        
+        document.getElementById('loc-list').innerHTML = '';
+        document.getElementById('prof-list').innerHTML = '';
+        document.getElementById('restartBtn').style.display = 'none';
+        document.getElementById('stats').textContent = `0 / ${data.length}`;
+        document.getElementById('progressFill').style.width = '0%';
+        
+        showNextWord();
+    }
+
+    function showNextWord() {
+        if (currentIdx < gameData.length) {
+            document.getElementById('currentWord').textContent = gameData[currentIdx].word;
+            document.getElementById('currentWord').style.display = 'block';
+        } else {
+            document.getElementById('currentWord').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+            alert("Отлично! Alle Wörter wurden richtig sortiert.");
+        }
+    }
+
+    function handleSort(choice) {
+        if (!canClick || currentIdx >= gameData.length) return;
+
+        const target = gameData[currentIdx];
+        const zone = choice === 'loc' ? document.getElementById('loc-zone') : document.getElementById('prof-zone');
+
+        if (choice === target.type) {
+            // RICHTIG
+            const list = choice === 'loc' ? document.getElementById('loc-list') : document.getElementById('prof-list');
+            const item = document.createElement('div');
+            item.className = 'sorted-item';
+            item.textContent = target.word;
+            list.prepend(item); // Neues Wort oben einfügen
+
+            solvedCount++;
+            currentIdx++;
+            
+            // UI Update
+            document.getElementById('stats').textContent = `${solvedCount} / ${data.length}`;
+            document.getElementById('progressFill').style.width = `${(solvedCount / data.length) * 100}%`;
+            
+            showNextWord();
+        } else {
+            // FALSCH
+            canClick = false;
+            zone.classList.add('error');
+            setTimeout(() => {
+                zone.classList.remove('error');
+                canClick = true;
+            }, 400);
+        }
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
