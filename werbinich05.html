@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Кто я? (Logik-Rätsel)</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; font-size: 1.6rem; }
+        p.instruction { color: #666; margin-bottom: 25px; }
+
+        /* Raster für Beschreibungen */
+        .descriptions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 35px;
+        }
+
+        .person-card {
+            background: #fff;
+            border: 2px solid #edf2f7;
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100px;
+            text-align: left;
+        }
+
+        .person-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .person-card.selected { border-color: var(--accent); background: #ebf8ff; box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
+        .person-card.matched { opacity: 0.4; cursor: default; border-color: var(--success); transform: none; background: #f0fff4; }
+
+        .name-tag {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .description-text { 
+            font-style: normal; /* Keine Kursivschrift */
+            color: #4a5568; 
+            line-height: 1.4; 
+        }
+
+        /* Raster für Bilder */
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .image-target {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background-size: cover;
+            background-position: center;
+            border-radius: 12px;
+            border: 4px solid #eee;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .image-target.active-target:hover { border-color: var(--accent); }
+        
+        .assigned-name {
+            background: var(--success);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Neustart Button */
+        .btn-restart {
+            margin-top: 30px;
+            padding: 12px 35px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
+
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        .error-shake { animation: shake 0.4s ease; border-color: var(--error) !important; }
+
+        /* Responsive Anpassung */
+        @media (max-width: 768px) {
+            .images-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+            .images-grid { grid-template-columns: 1fr; }
+            .descriptions-grid { grid-template-columns: 1fr; }
+            .image-target { aspect-ratio: 16/9; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Логическая загадка: Кто я?</h1>
+    <p class="instruction">Lies die Beschreibungen. Klicke auf einen Namen und dann auf das richtige Bild.</p>
+
+    <div class="descriptions-grid" id="descriptions"></div>
+    <div class="images-grid" id="images"></div>
+
+    <button class="btn-restart" id="restartBtn" onclick="initLevel()">Заново (Neustart)</button>
+</div>
+
+<script>
+    // Datenstruktur basierend auf deinen Bildern
+    const persons = [
+        {
+            id: 'ivan',
+            name: 'Иван',
+            text: 'Я работаю в больнице и лечу людей. Кто я?',
+            image: 'arzt.jpg'
+        },
+        {
+            id: 'maxim',
+            name: 'Максим',
+            text: 'Я работаю в ресторане и готовлю вкусные блюда. Кто я?',
+            image: 'koch.jpg'
+        },
+        {
+            id: 'oleg',
+            name: 'Олег',
+            text: 'Я приношу еду и напитки гостям в ресторане. Кто я?',
+            image: 'kellner.jpg'
+        },
+        {
+            id: 'dmitry',
+            name: 'Дмитрий',
+            text: 'Я вожу большую машину и перевожу грузы. Кто я?',
+            image: 'fahrer.jpg'
+        },
+        {
+            id: 'alexey',
+            name: 'Алексей',
+            text: 'Я строю дома и работаю с чертежами. Кто я?',
+            image: 'ingenieur.jpg'
+        },
+        {
+            id: 'anna',
+            name: 'Анна',
+            text: 'Я работаю в офисе, пишу письма и отвечаю на звонки. Кто я?',
+            image: 'sekretaerin.jpg'
+        }
+    ];
+
+    let selectedId = null;
+    let solvedCount = 0;
+
+    function initLevel() {
+        const descGrid = document.getElementById('descriptions');
+        const imgGrid = document.getElementById('images');
+        const restartBtn = document.getElementById('restartBtn');
+        
+        descGrid.innerHTML = '';
+        imgGrid.innerHTML = '';
+        restartBtn.style.display = 'none';
+        solvedCount = 0;
+        selectedId = null;
+
+        // Beschreibungen mischen
+        const shuffledTexts = [...persons].sort(() => Math.random() - 0.5);
+        shuffledTexts.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'person-card';
+            card.id = `card-${p.id}`;
+            card.innerHTML = `<span class="name-tag">${p.name}</span><span class="description-text">${p.text}</span>`;
+            card.onclick = () => selectCard(p.id);
+            descGrid.appendChild(card);
+        });
+
+        // Bilder mischen
+        const shuffledImgs = [...persons].sort(() => Math.random() - 0.5);
+        shuffledImgs.forEach(p => {
+            const target = document.createElement('div');
+            target.className = 'image-target active-target';
+            target.style.backgroundImage = `url('${p.image}')`;
+            target.id = `target-${p.id}`;
+            target.onclick = () => checkMatch(p.id, target);
+            imgGrid.appendChild(target);
+        });
+    }
+
+    function selectCard(id) {
+        const card = document.getElementById(`card-${id}`);
+        if (card.classList.contains('matched')) return;
+
+        document.querySelectorAll('.person-card').forEach(c => c.classList.remove('selected'));
+        selectedId = id;
+        card.classList.add('selected');
+    }
+
+    function checkMatch(targetId, element) {
+        if (!selectedId) return;
+        if (element.querySelector('.assigned-name')) return;
+
+        const card = document.getElementById(`card-${selectedId}`);
+
+        if (selectedId === targetId) {
+            // Treffer
+            const personData = persons.find(p => p.id === selectedId);
+            const tag = document.createElement('div');
+            tag.className = 'assigned-name';
+            tag.textContent = personData.name;
+            element.appendChild(tag);
+            
+            card.classList.remove('selected');
+            card.classList.add('matched');
+            element.classList.remove('active-target');
+            
+            selectedId = null;
+            solvedCount++;
+            
+            if (solvedCount === persons.length) {
+                setTimeout(() => {
+                    alert("Правильно! (Richtig!) Alle Berufe wurden korrekt zugeordnet.");
+                    document.getElementById('restartBtn').style.display = 'inline-block';
+                }, 400);
+            }
+        } else {
+            // Fehler Animation
+            element.classList.add('error-shake');
+            setTimeout(() => element.classList.remove('error-shake'), 400);
+        }
+    }
+
+    // Spielstart
+    initLevel();
+</script>
+
+</body>
+</html>
