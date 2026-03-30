@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: 10 Sätze Instrumental</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 750px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; font-size: 1.5rem; }
+        p.instruction { color: #666; margin-bottom: 25px; }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .progress-bar-bg {
+            flex-grow: 1;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin: 0 15px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Satz-Display */
+        .sentence-area {
+            background: #f9fbfd;
+            padding: 40px 20px;
+            border-radius: 15px;
+            font-size: 1.8rem;
+            margin-bottom: 35px;
+            border: 2px solid #edf2f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 120px;
+        }
+
+        .gap-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .gap-line {
+            min-width: 90px;
+            border-bottom: 4px solid var(--accent);
+            color: var(--accent);
+            font-weight: bold;
+            height: 1.4em;
+            display: flex;
+            justify-content: center;
+        }
+
+        .correct-text { color: var(--success); border-bottom-color: var(--success); }
+
+        /* Buttons */
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .ending-btn {
+            background: white;
+            border: 2px solid #e2e8f0;
+            padding: 18px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--primary);
+        }
+
+        .ending-btn:hover {
+            border-color: var(--accent);
+            background: #f0f9ff;
+            transform: translateY(-2px);
+        }
+
+        .ending-btn:active { transform: scale(0.98); }
+
+        .status-msg {
+            margin-top: 25px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            height: 1.5em;
+        }
+
+        .btn-restart {
+            margin-top: 20px;
+            padding: 12px 35px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .error-shake { animation: shake 0.4s ease; border-bottom-color: var(--error) !important; color: var(--error) !important; }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .sentence-area { font-size: 1.3rem; padding: 25px 15px; }
+            .ending-btn { padding: 12px; font-size: 1.1rem; }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Конструктор окончаний</h1>
+    <p class="instruction">Wähle die richtige Endung für den Instrumental (Творительный падеж).</p>
+
+    <div class="progress-header">
+        <span id="task-label">Satz 1 von 10</span>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="sentence-area" id="sentence">
+        Я работаю инженер<div class="gap-container"><span class="gap-line" id="gap">___</span></div>
+    </div>
+
+    <div class="buttons-grid">
+        <button class="ending-btn" onclick="handleChoice('ом')">-ом</button>
+        <button class="ending-btn" onclick="handleChoice('ем')">-ем</button>
+        <button class="ending-btn" onclick="handleChoice('ой')">-ой</button>
+        <button class="ending-btn" onclick="handleChoice('ью')">-ью</button>
+    </div>
+
+    <div class="status-msg" id="status"></div>
+    <button class="btn-restart" id="restartBtn" onclick="initLevel()">Nochmal spielen</button>
+</div>
+
+<script>
+    const data = [
+        { start: "Я работаю инженер", end: "ом" },
+        { start: "Я работаю менеджер", end: "ом" },
+        { start: "Я работаю врач", end: "ом" }, // Betont: врачОМ
+        { start: "Я работаю учител", end: "ем" },
+        { start: "Я работаю преподавател", end: "ем" },
+        { start: "Я работаю повар", end: "ом" },
+        { start: "Я работаю официант", end: "ом" },
+        { start: "Я работаю официантк", end: "ой" },
+        { start: "Я работаю студентк", end: "ой" },
+        { start: "Я работаю модел", end: "ью" }
+    ];
+
+    let currentIdx = 0;
+    let locked = false;
+    let levelTasks = [];
+
+    function initLevel() {
+        currentIdx = 0;
+        locked = false;
+        levelTasks = [...data].sort(() => Math.random() - 0.5); // Sätze mischen
+        document.getElementById('restartBtn').style.display = 'none';
+        updateUI();
+    }
+
+    function updateUI() {
+        const task = levelTasks[currentIdx];
+        document.getElementById('task-label').textContent = `Satz ${currentIdx + 1} von ${levelTasks.length}`;
+        document.getElementById('progressFill').style.width = `${(currentIdx / levelTasks.length) * 100}%`;
+        document.getElementById('sentence').innerHTML = `${task.start}<div class="gap-container"><span class="gap-line" id="gap">___</span></div>`;
+        document.getElementById('status').textContent = '';
+    }
+
+    function handleChoice(choice) {
+        if (locked) return;
+
+        const task = levelTasks[currentIdx];
+        const gap = document.getElementById('gap');
+
+        if (choice === task.end) {
+            // RICHTIG
+            locked = true;
+            gap.textContent = choice;
+            gap.classList.add('correct-text');
+            document.getElementById('status').innerHTML = '<span style="color:var(--success)">Правильно!</span>';
+            
+            setTimeout(() => {
+                if (currentIdx < levelTasks.length - 1) {
+                    currentIdx++;
+                    locked = false;
+                    updateUI();
+                } else {
+                    showFinal();
+                }
+            }, 1200);
+        } else {
+            // FALSCH
+            gap.classList.add('error-shake');
+            document.getElementById('status').innerHTML = '<span style="color:var(--error)">Попробуй ещё раз!</span>';
+            setTimeout(() => {
+                gap.classList.remove('error-shake');
+            }, 500);
+        }
+    }
+
+    function showFinal() {
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('sentence').innerHTML = 'Отлично! (Hervorragend!) <br> Alle 10 Sätze sind korrekt.';
+        document.getElementById('status').textContent = '';
+        document.getElementById('restartBtn').style.display = 'inline-block';
+    }
+
+    // Erster Start
+    initLevel();
+</script>
+
+</body>
+</html>
