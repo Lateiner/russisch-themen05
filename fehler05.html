@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Fehler finden</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); font-size: 1.6rem; margin-bottom: 5px; }
+        p.instruction { color: #666; margin-bottom: 25px; }
+
+        /* Fortschritt */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        /* Satz-Display */
+        .sentence-box {
+            background: #f8fafc;
+            padding: 30px 15px;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            line-height: 2.2;
+            margin-bottom: 30px;
+            border: 2px solid #edf2f7;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .word {
+            padding: 5px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            user-select: none;
+        }
+
+        .word:hover {
+            background-color: #e2e8f0;
+            border-bottom-color: var(--accent);
+        }
+
+        .word.wrong-selection {
+            animation: shake 0.4s ease;
+            color: var(--error);
+            border-bottom-color: var(--error);
+        }
+
+        .word.error-found {
+            background-color: #fff3cd;
+            border-bottom-color: #f39c12;
+            color: #856404;
+        }
+
+        /* Korrektur-Optionen */
+        .options-box {
+            display: none; 
+            background: #fff;
+            border: 2px solid var(--accent);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .options-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--accent);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+
+        .option-btn {
+            padding: 15px 10px;
+            background: #f1f5f9;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* Feedback */
+        .feedback {
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 1.5em;
+            font-size: 1.1rem;
+        }
+
+        .restart-btn {
+            display: none;
+            margin: 20px auto;
+            padding: 12px 40px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Animationen */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 600px) {
+            .sentence-box { font-size: 1.2rem; }
+            .option-btn { font-size: 1rem; }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Найди ошибку!</h1>
+    <p class="instruction">Klicke auf das Wort mit dem Grammatikfehler und korrigiere es.</p>
+    
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="sentence-box" id="sentenceDisplay"></div>
+
+    <div class="options-box" id="optionsBox">
+        <div class="options-title">Wie ist es richtig?</div>
+        <div class="options-grid" id="optionsGrid"></div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+    <button class="restart-btn" id="restartBtn" onclick="initGame()">Nochmal starten</button>
+</div>
+
+<script>
+    const tasks = [
+        {
+            sentence: ["Я", "работаю", "в", "банк"],
+            errorIndex: 3,
+            options: ["в банке", "в банку", "в банком"],
+            correct: "в банке"
+        },
+        {
+            sentence: ["Я", "училась", "в", "институт"],
+            errorIndex: 3,
+            options: ["в институтом", "в институте", "в института"],
+            correct: "в институте"
+        },
+        {
+            sentence: ["Я", "работаю", "преподаватель"],
+            errorIndex: 2,
+            options: ["преподавателем", "преподавателе", "преподавателью"],
+            correct: "преподавателем"
+        },
+        {
+            sentence: ["Она", "окончила", "магистратура"],
+            errorIndex: 2,
+            options: ["магистратуре", "магистратурой", "магистратуру"],
+            correct: "магистратуру"
+        },
+        {
+            sentence: ["Я", "учусь", "на", "филологический", "факультет"],
+            errorIndex: 3,
+            options: ["филологическом", "филологический", "филологического"],
+            correct: "филологическом"
+        },
+        {
+            sentence: ["Мне", "нравится", "моя", "профессию"],
+            errorIndex: 3,
+            options: ["профессия", "профессии", "профессией"],
+            correct: "профессия"
+        }
+    ];
+
+    let currentLevel = 0;
+    let errorFound = false;
+    let currentTasks = [];
+
+    function initGame() {
+        currentLevel = 0;
+        currentTasks = [...tasks].sort(() => Math.random() - 0.5);
+        document.getElementById('restartBtn').style.display = 'none';
+        showTask();
+    }
+
+    function showTask() {
+        errorFound = false;
+        const task = currentTasks[currentLevel];
+        const display = document.getElementById('sentenceDisplay');
+        const feedback = document.getElementById('feedback');
+        const optionsBox = document.getElementById('optionsBox');
+        
+        display.innerHTML = '';
+        feedback.textContent = '';
+        optionsBox.style.display = 'none';
+        
+        document.getElementById('progressFill').style.width = (currentLevel / currentTasks.length) * 100 + '%';
+
+        task.sentence.forEach((word, index) => {
+            const span = document.createElement('span');
+            span.className = 'word';
+            span.textContent = word;
+            span.onclick = () => handleWordClick(index, span);
+            display.appendChild(span);
+        });
+    }
+
+    function handleWordClick(index, element) {
+        if (errorFound) return;
+
+        const task = currentTasks[currentLevel];
+        const feedback = document.getElementById('feedback');
+
+        if (index === task.errorIndex) {
+            errorFound = true;
+            element.classList.add('error-found');
+            feedback.textContent = "Richtig! Dieses Wort ist falsch. Wähle die Korrektur:";
+            feedback.style.color = "#f39c12";
+            showOptions();
+        } else {
+            element.classList.add('wrong-selection');
+            feedback.textContent = "Dieses Wort ist korrekt.";
+            feedback.style.color = "var(--error)";
+            setTimeout(() => {
+                element.classList.remove('wrong-selection');
+            }, 500);
+        }
+    }
+
+    function showOptions() {
+        const task = currentTasks[currentLevel];
+        const grid = document.getElementById('optionsGrid');
+        const box = document.getElementById('optionsBox');
+        
+        grid.innerHTML = '';
+        box.style.display = 'block';
+
+        const shuffledOptions = [...task.options].sort(() => Math.random() - 0.5);
+
+        shuffledOptions.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = opt;
+            btn.onclick = () => checkOption(opt);
+            grid.appendChild(btn);
+        });
+    }
+
+    function checkOption(selected) {
+        const task = currentTasks[currentLevel];
+        const feedback = document.getElementById('feedback');
+        const words = document.querySelectorAll('.word');
+
+        if (selected === task.correct) {
+            words[task.errorIndex].textContent = selected;
+            words[task.errorIndex].classList.remove('error-found');
+            words[task.errorIndex].style.color = 'var(--success)';
+            words[task.errorIndex].style.fontWeight = 'bold';
+            
+            document.getElementById('optionsBox').style.display = 'none';
+            feedback.textContent = "Hervorragend! (Отлично!)";
+            feedback.style.color = "var(--success)";
+
+            setTimeout(() => {
+                if (currentLevel < currentTasks.length - 1) {
+                    currentLevel++;
+                    showTask();
+                } else {
+                    finishGame();
+                }
+            }, 1500);
+        } else {
+            feedback.textContent = "Nein, das ist die falsche Form. Versuch es nochmal!";
+            feedback.style.color = "var(--error)";
+        }
+    }
+
+    function finishGame() {
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('sentenceDisplay').innerHTML = "<h2>Geschafft!</h2><p>Alle Fehler wurden korrigiert.</p>";
+        document.getElementById('feedback').textContent = '';
+        document.getElementById('restartBtn').style.display = 'block';
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
