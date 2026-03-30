@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Satzbau-Schieber mit Lösung</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --bg: #f8f9fa;
+            --word-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); font-size: 1.6rem; margin-bottom: 5px; }
+        p.instruction { color: #666; margin-bottom: 20px; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        /* Zielbereich */
+        .target-zone {
+            min-height: 100px;
+            background: #f1f4f6;
+            border: 2px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Wort-Pool */
+        .word-pool {
+            min-height: 80px;
+            padding: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .word-tile {
+            background: var(--word-bg);
+            border: 2px solid #ddd;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 500;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+            user-select: none;
+            color: var(--primary);
+        }
+
+        .word-tile:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .word-tile.correct { background: #d4edda; border-color: var(--success); cursor: default; }
+        .word-tile.wrong { border-color: var(--error); animation: shake 0.4s; }
+        .word-tile.revealed { background: #fff3cd; border-color: var(--warning); cursor: default; }
+
+        /* Steuerung */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn-check { background: var(--accent); color: white; }
+        .btn-check:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-solution { background: var(--warning); color: white; }
+        .btn-restart { background: var(--primary); color: white; display: none; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        @media (max-width: 600px) {
+            .word-tile { font-size: 1rem; padding: 8px 12px; }
+            button { width: 100%; max-width: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Конструктор предложений</h1>
+    <p class="instruction">Klicke die Wörter an, um den Satz zu bauen.</p>
+    
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="target-zone" id="targetZone"></div>
+    <div class="word-pool" id="wordPool"></div>
+
+    <div class="controls">
+        <button class="btn-check" id="checkBtn" onclick="checkSentence()" disabled>Prüfen</button>
+        <button class="btn-solution" id="solBtn" onclick="showSolution()">Lösung anzeigen</button>
+        <button class="btn-restart" id="restartBtn" onclick="resetGame()">Neustart / Заново</button>
+    </div>
+    
+    <p id="feedback" style="margin-top: 20px; font-weight: bold; height: 1.2em;"></p>
+</div>
+
+<script>
+    const sentences = [
+        ["Я", "окончила", "бакалавриат", "в", "Москве"],
+        ["Моя", "сестра", "учится", "в", "университете"],
+        ["Я", "буду", "работать", "менеджером", "в", "банке"],
+        ["Ира", "училась", "на", "филологическом", "факультете"],
+        ["Вчера", "я", "изучала", "русскую", "литературу"]
+    ];
+
+    let currentLevel = 0;
+    let isLevelSolved = false;
+
+    function initLevel() {
+        const pool = document.getElementById('wordPool');
+        const target = document.getElementById('targetZone');
+        const feedback = document.getElementById('feedback');
+        
+        target.innerHTML = '';
+        pool.innerHTML = '';
+        feedback.textContent = '';
+        isLevelSolved = false;
+        document.getElementById('checkBtn').disabled = true;
+        document.getElementById('checkBtn').style.display = 'inline-block';
+        document.getElementById('solBtn').style.display = 'inline-block';
+        document.getElementById('restartBtn').style.display = 'none';
+
+        document.getElementById('progressFill').style.width = (currentLevel / sentences.length) * 100 + '%';
+
+        let shuffled = [...sentences[currentLevel]].sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(word => {
+            const tile = document.createElement('div');
+            tile.className = 'word-tile';
+            tile.textContent = word;
+            tile.onclick = () => { if(!isLevelSolved) moveWord(tile); };
+            pool.appendChild(tile);
+        });
+    }
+
+    function moveWord(tile) {
+        const pool = document.getElementById('wordPool');
+        const target = document.getElementById('targetZone');
+        
+        if (tile.parentElement === pool) {
+            target.appendChild(tile);
+        } else {
+            pool.appendChild(tile);
+        }
+
+        const tilesInTarget = target.querySelectorAll('.word-tile');
+        document.getElementById('checkBtn').disabled = (tilesInTarget.length === 0);
+        tilesInTarget.forEach(t => t.classList.remove('wrong'));
+    }
+
+    function checkSentence() {
+        const targetTiles = document.getElementById('targetZone').querySelectorAll('.word-tile');
+        const userSentence = Array.from(targetTiles).map(t => t.textContent);
+        const correctSentence = sentences[currentLevel];
+        const feedback = document.getElementById('feedback');
+
+        if (JSON.stringify(userSentence) === JSON.stringify(correctSentence)) {
+            handleSuccess(targetTiles, 'Правильно! (Richtig!)', 'correct');
+        } else {
+            targetTiles.forEach(t => t.classList.add('wrong'));
+            feedback.style.color = 'var(--error)';
+            feedback.textContent = 'Попробуй ещё раз!';
+            setTimeout(() => targetTiles.forEach(t => t.classList.remove('wrong')), 600);
+        }
+    }
+
+    function showSolution() {
+        const target = document.getElementById('targetZone');
+        const correctSentence = sentences[currentLevel];
+        
+        target.innerHTML = '';
+        correctSentence.forEach(word => {
+            const tile = document.createElement('div');
+            tile.className = 'word-tile revealed';
+            tile.textContent = word;
+            target.appendChild(tile);
+        });
+
+        handleSuccess(target.querySelectorAll('.word-tile'), 'Вот правильный ответ:', 'revealed');
+    }
+
+    function handleSuccess(tiles, message, className) {
+        isLevelSolved = true;
+        const feedback = document.getElementById('feedback');
+        feedback.style.color = className === 'correct' ? 'var(--success)' : 'var(--warning)';
+        feedback.textContent = message;
+        
+        document.getElementById('checkBtn').style.display = 'none';
+        document.getElementById('solBtn').style.display = 'none';
+
+        setTimeout(() => {
+            if (currentLevel < sentences.length - 1) {
+                currentLevel++;
+                initLevel();
+            } else {
+                finishGame();
+            }
+        }, 2000);
+    }
+
+    function finishGame() {
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('targetZone').innerHTML = '<h2>Отлично!</h2><p>Alle Sätze abgeschlossen.</p>';
+        document.getElementById('wordPool').innerHTML = '';
+        document.getElementById('checkBtn').style.display = 'none';
+        document.getElementById('solBtn').style.display = 'none';
+        document.getElementById('restartBtn').style.display = 'inline-block';
+        document.getElementById('feedback').textContent = '';
+    }
+
+    function resetGame() {
+        currentLevel = 0;
+        initLevel();
+    }
+
+    initLevel();
+</script>
+
+</body>
+</html>
