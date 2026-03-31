@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Berufsfelder-Mapping</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; font-size: 1.6rem; }
+        p.instruction { color: #666; margin-bottom: 30px; }
+
+        /* Wort-Pool */
+        .phrase-pool {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 15px;
+            min-height: 100px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 40px;
+            border: 2px dashed #bdc3c7;
+        }
+
+        .phrase-card {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            user-select: none;
+        }
+
+        .phrase-card:hover:not(.hidden) { transform: translateY(-2px); border-color: var(--accent); }
+        .phrase-card.selected { border-color: var(--accent); background: #e1f5fe; }
+        .phrase-card.hidden { display: none; }
+
+        /* Kategorien-Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .category-box {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 15px;
+            min-height: 180px;
+            transition: all 0.3s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .category-box:hover { border-color: var(--accent); background: #fff; }
+        
+        .category-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #eee;
+            width: 100%;
+        }
+
+        .mapped-phrase {
+            background: #eafaf1;
+            color: #155724;
+            width: 90%;
+            margin: 4px 0;
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            border: 1px solid #d4edda;
+            animation: popIn 0.3s ease;
+        }
+
+        .mapped-phrase.revealed {
+            background: #fff3cd;
+            border-color: var(--warning);
+            color: #856404;
+        }
+
+        /* Buttons */
+        .controls {
+            margin-top: 35px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .btn-solution { background: var(--warning); color: white; }
+        .btn-restart { background: var(--primary); color: white; display: none; }
+
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        .error-shake { animation: shake 0.4s ease; border-color: var(--error) !important; }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .categories-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Карта профессий (Berufsfelder)</h1>
+    <p class="instruction">Wähle eine Tätigkeit aus und klicke auf das passende Berufsfeld.</p>
+
+    <div id="phrasePool" class="phrase-pool"></div>
+
+    <div class="categories-grid">
+        <div class="category-box" onclick="assignTo('med', this)">
+            <div class="category-title">Медицина</div>
+            <div id="list-med" style="width: 100%;"></div>
+        </div>
+
+        <div class="category-box" onclick="assignTo('edu', this)">
+            <div class="category-title">Образование</div>
+            <div id="list-edu" style="width: 100%;"></div>
+        </div>
+
+        <div class="category-box" onclick="assignTo('rest', this)">
+            <div class="category-title">Ресторан</div>
+            <div id="list-rest" style="width: 100%;"></div>
+        </div>
+
+        <div class="category-box" onclick="assignTo('off', this)">
+            <div class="category-title">Офис</div>
+            <div id="list-off" style="width: 100%;"></div>
+        </div>
+    </div>
+
+    <div id="feedback" style="margin-top: 20px; font-weight: bold; min-height: 1.5em;"></div>
+
+    <div class="controls">
+        <button id="solutionBtn" class="btn-solution" onclick="showAllSolutions()">Lösung anzeigen</button>
+        <button id="restartBtn" class="btn-restart" onclick="initGame()">Заново (Neustart)</button>
+    </div>
+</div>
+
+<script>
+    const data = [
+        { text: 'помогать людям', cat: 'med' },
+        { text: 'работать в больнице', cat: 'med' },
+        { text: 'лечить пациентов', cat: 'med' },
+        { text: 'преподавать русский язык', cat: 'edu' },
+        { text: 'работать в школе', cat: 'edu' },
+        { text: 'учить студентов', cat: 'edu' },
+        { text: 'готовить еду', cat: 'rest' },
+        { text: 'приносить напитки', cat: 'rest' },
+        { text: 'работать поваром', cat: 'rest' },
+        { text: 'писать письма', cat: 'off' },
+        { text: 'отвечать на звонки', cat: 'off' },
+        { text: 'работать менеджером', cat: 'off' }
+    ];
+
+    let selectedPhrase = null;
+    let solvedCount = 0;
+
+    function initGame() {
+        const pool = document.getElementById('phrasePool');
+        document.querySelectorAll('.category-box div[id^="list-"]').forEach(el => el.innerHTML = '');
+        document.getElementById('feedback').textContent = '';
+        document.getElementById('restartBtn').style.display = 'none';
+        document.getElementById('solutionBtn').style.display = 'inline-block';
+        pool.innerHTML = '';
+        solvedCount = 0;
+        selectedPhrase = null;
+
+        const shuffled = [...data].sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'phrase-card';
+            card.textContent = item.text;
+            card.dataset.cat = item.cat;
+            card.onclick = (e) => {
+                e.stopPropagation();
+                selectPhrase(item, card);
+            };
+            pool.appendChild(card);
+        });
+    }
+
+    function selectPhrase(item, element) {
+        if (selectedPhrase) {
+            selectedPhrase.element.classList.remove('selected');
+        }
+        selectedPhrase = { item, element };
+        element.classList.add('selected');
+    }
+
+    function assignTo(category, boxElement) {
+        if (!selectedPhrase) return;
+
+        if (selectedPhrase.item.cat === category) {
+            // Richtig
+            addPhraseToBox(selectedPhrase.item.text, category, false);
+            selectedPhrase.element.classList.add('hidden');
+            selectedPhrase = null;
+            solvedCount++;
+            checkWin();
+        } else {
+            // Falsch
+            boxElement.classList.add('error-shake');
+            setTimeout(() => boxElement.classList.remove('error-shake'), 400);
+        }
+    }
+
+    function addPhraseToBox(text, category, isRevealed) {
+        const list = document.getElementById(`list-${category}`);
+        const div = document.createElement('div');
+        div.className = 'mapped-phrase' + (isRevealed ? ' revealed' : '');
+        div.textContent = text;
+        list.appendChild(div);
+    }
+
+    function showAllSolutions() {
+        const remainingCards = document.querySelectorAll('.phrase-card:not(.hidden)');
+        remainingCards.forEach(card => {
+            const text = card.textContent;
+            const cat = card.dataset.cat;
+            addPhraseToBox(text, cat, true);
+            card.classList.add('hidden');
+            solvedCount++;
+        });
+        checkWin();
+    }
+
+    function checkWin() {
+        if (solvedCount === data.length) {
+            document.getElementById('feedback').textContent = "Отлично! (Hervorragend!)";
+            document.getElementById('solutionBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+        }
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
