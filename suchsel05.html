@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Russisch-Lernspiel: Wortsuche</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --bg: #f4f7f6;
+            --cell-size: 40px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            /* Verhindert Scrollen beim Markieren auf dem Handy */
+            touch-action: none; 
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            touch-action: auto; 
+        }
+
+        h1 { color: var(--primary); margin: 0 0 5px 0; font-size: 1.5rem; }
+        p.instruction { color: #666; margin-bottom: 15px; font-size: 0.9rem; }
+
+        /* Das Gitter - Sauber zentriert */
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(10, var(--cell-size));
+            gap: 2px;
+            background: #dfe6e9;
+            border: 2px solid #dfe6e9;
+            margin: 0 auto 20px auto;
+            user-select: none;
+            touch-action: none;
+            width: max-content;
+        }
+
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Zustände */
+        .cell.highlighted { background: #e1f5fe; color: var(--accent); }
+        .cell.found { background: var(--success) !important; color: white !important; }
+        .cell.solved { background: #fff3cd !important; color: #856404 !important; border: 1px solid var(--warning); }
+
+        /* Wortliste */
+        .word-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .word-item {
+            padding: 4px 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            transition: all 0.3s;
+        }
+
+        .word-item.found {
+            background: var(--success);
+            color: white;
+            text-decoration: line-through;
+        }
+
+        /* Buttons */
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            flex: 1;
+            max-width: 150px;
+        }
+
+        .btn-restart { background: var(--primary); color: white; }
+        .btn-solution { background: var(--warning); color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        @media (max-width: 450px) {
+            :root { --cell-size: 32px; }
+            .cell { font-size: 0.9rem; }
+            .container { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Найди слова</h1>
+    <p class="instruction">Markiere die Berufe waagerecht oder senkrecht.</p>
+
+    <div id="grid"></div>
+
+    <div class="word-list" id="wordList"></div>
+
+    <div class="controls">
+        <button class="btn-restart" onclick="initGame()">Заново</button>
+        <button class="btn-solution" onclick="showSolution()">Решение</button>
+    </div>
+</div>
+
+<script>
+    const professions = ['ВРАЧ', 'ПОВАР', 'ИНЖЕНЕР', 'МЕНЕДЖЕР', 'ВОДИТЕЛЬ', 'СЕКРЕТАРЬ', 'СТУДЕНТ', 'УЧИТЕЛЬ'];
+    const gridSize = 10;
+    let gridData = [];
+    let wordLocations = [];
+    let foundWords = [];
+    
+    let isSelecting = false;
+    let startPos = null;
+    let currentSelection = [];
+
+    const alphabet = 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЫЬЭЮЯ';
+
+    function initGame() {
+        foundWords = [];
+        wordLocations = [];
+        gridData = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''));
+        
+        // Wörter platzieren (NUR Waagerecht oder Senkrecht)
+        professions.forEach(word => {
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 150) {
+                const isHorizontal = Math.random() > 0.5;
+                const dr = isHorizontal ? 0 : 1;
+                const dc = isHorizontal ? 1 : 0;
+                
+                const r = Math.floor(Math.random() * gridSize);
+                const col = Math.floor(Math.random() * gridSize);
+                
+                if (canPlace(word, r, col, dr, dc)) {
+                    let coords = [];
+                    for (let i = 0; i < word.length; i++) {
+                        const currR = r + i * dr;
+                        const currC = col + i * dc;
+                        gridData[currR][currC] = word[i];
+                        coords.push({r: currR, c: currC});
+                    }
+                    wordLocations.push({word: word, cells: coords});
+                    placed = true;
+                }
+                attempts++;
+            }
+        });
+
+        // Mit zufälligen kyrillischen Buchstaben füllen
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                if (gridData[r][c] === '') {
+                    gridData[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                }
+            }
+        }
+        renderGrid();
+        renderWordList();
+    }
+
+    function canPlace(word, r, c, dr, dc) {
+        const endR = r + (word.length - 1) * dr;
+        const endC = c + (word.length - 1) * dc;
+        if (endR >= gridSize || endC >= gridSize) return false;
+        
+        for (let i = 0; i < word.length; i++) {
+            const currR = r + i * dr;
+            const currC = c + i * dc;
+            if (gridData[currR][currC] !== '' && gridData[currR][currC] !== word[i]) return false;
+        }
+        return true;
+    }
+
+    function renderGrid() {
+        const gridEl = document.getElementById('grid');
+        gridEl.innerHTML = '';
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.textContent = gridData[r][c];
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                
+                cell.onmousedown = (e) => { e.preventDefault(); startSelect(r, c); };
+                cell.onmouseover = () => moveSelect(r, c);
+                cell.ontouchstart = (e) => { e.preventDefault(); startSelect(r, c); };
+
+                gridEl.appendChild(cell);
+            }
+        }
+
+        gridEl.ontouchmove = (e) => {
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (el && el.classList.contains('cell')) {
+                moveSelect(parseInt(el.dataset.r), parseInt(el.dataset.c));
+            }
+        };
+    }
+
+    function startSelect(r, c) {
+        isSelecting = true;
+        startPos = {r, c};
+        updateSelection(r, c);
+    }
+
+    function moveSelect(r, c) {
+        if (!isSelecting) return;
+        updateSelection(r, c);
+    }
+
+    function updateSelection(currR, currC) {
+        let dr = currR - startPos.r;
+        let dc = currC - startPos.c;
+        
+        // Nur strikt waagerecht oder senkrecht
+        if (dr !== 0 && dc !== 0) return;
+
+        const steps = Math.max(Math.abs(dr), Math.abs(dc));
+        const unitR = dr === 0 ? 0 : dr / Math.abs(dr);
+        const unitC = dc === 0 ? 0 : dc / Math.abs(dc);
+
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('highlighted'));
+        currentSelection = [];
+
+        for (let i = 0; i <= steps; i++) {
+            const r = startPos.r + i * unitR;
+            const c = startPos.c + i * unitC;
+            const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+            if (cell) {
+                cell.classList.add('highlighted');
+                currentSelection.push({r, c, char: gridData[r][c]});
+            }
+        }
+    }
+
+    function endSelect() {
+        if (!isSelecting) return;
+        isSelecting = false;
+
+        const selectedWord = currentSelection.map(s => s.char).join('');
+        const reversedWord = selectedWord.split('').reverse().join('');
+        
+        const found = professions.find(w => w === selectedWord || w === reversedWord);
+
+        if (found && !foundWords.includes(found)) {
+            foundWords.push(found);
+            currentSelection.forEach(pos => {
+                const cell = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
+                cell.classList.add('found');
+                cell.classList.remove('solved'); // Falls vorher gelöst, jetzt "gefunden"
+            });
+            renderWordList();
+        }
+
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('highlighted'));
+    }
+
+    function showSolution() {
+        wordLocations.forEach(loc => {
+            if (!foundWords.includes(loc.word)) {
+                loc.cells.forEach(cell => {
+                    document.querySelector(`.cell[data-r="${cell.r}"][data-c="${cell.c}"]`).classList.add('solved');
+                });
+            }
+        });
+    }
+
+    function renderWordList() {
+        const listEl = document.getElementById('wordList');
+        listEl.innerHTML = '';
+        professions.forEach(w => {
+            const item = document.createElement('div');
+            item.className = 'word-item' + (foundWords.includes(w) ? ' found' : '');
+            item.textContent = w;
+            listEl.appendChild(item);
+        });
+    }
+
+    window.onmouseup = endSelect;
+    window.ontouchend = endSelect;
+
+    // Erststart
+    initGame();
+</script>
+
+</body>
+</html>
