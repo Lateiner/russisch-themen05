@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch-Übung: Verben-Zeitstrahl mit Lösung</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --past-color: #95a5a6;
+            --present-color: #d35400;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 5px; font-size: 1.6rem; }
+        p.instruction { color: #666; margin-bottom: 30px; }
+
+        /* Wort-Pool */
+        .word-pool {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 15px;
+            min-height: 100px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+            border: 2px dashed #bdc3c7;
+        }
+
+        .word-card {
+            background: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            user-select: none;
+        }
+
+        .word-card:hover:not(.hidden) { transform: translateY(-3px); border-color: var(--accent); }
+        .word-card.selected { border-color: var(--accent); background: #e1f5fe; }
+        .word-card.hidden { display: none; }
+
+        /* Zeitstrahl */
+        .timeline {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .zone {
+            padding: 20px;
+            border-radius: 15px;
+            min-height: 250px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 3px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .past-zone { background-color: #f8f9fa; border-color: var(--past-color); }
+        .present-zone { background-color: #fffaf0; border-color: var(--present-color); }
+
+        .zone-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; }
+        .past-zone .zone-title { color: #7f8c8d; }
+        .present-zone .zone-title { color: var(--present-color); }
+
+        .placed-word {
+            background: white;
+            width: 90%;
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            animation: slideIn 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .placed-word.revealed {
+            background: #fff3cd;
+            border: 1px solid var(--warning);
+        }
+
+        /* Controls */
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .btn-solution { background: var(--warning); color: white; }
+        .btn-restart { background: var(--primary); color: white; display: none; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        .error-shake { animation: shake 0.4s ease; border-color: var(--error) !important; }
+
+        @media (max-width: 600px) {
+            .timeline { grid-template-columns: 1fr; }
+            .zone { min-height: 180px; }
+            h1 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Линия времени: Глаголы</h1>
+    <p class="instruction">Klicke ein Verb an und ordne es der richtigen Zeit zu.</p>
+
+    <div id="wordPool" class="word-pool"></div>
+
+    <div class="timeline">
+        <div class="zone past-zone" onclick="assignTo('past', this)">
+            <div class="zone-title">Вчера (Vergangenheit)</div>
+            <div id="pastList" style="width: 100%;"></div>
+        </div>
+
+        <div class="zone present-zone" onclick="assignTo('present', this)">
+            <div class="zone-title">Сегодня (Gegenwart)</div>
+            <div id="presentList" style="width: 100%;"></div>
+        </div>
+    </div>
+
+    <div id="feedback" style="margin-top: 20px; font-weight: bold; min-height: 1.5em;"></div>
+
+    <div class="controls">
+        <button id="solutionBtn" class="btn-solution" onclick="showAllSolutions()">Lösung anzeigen</button>
+        <button id="restartBtn" class="btn-restart" onclick="initGame()">Заново (Neustart)</button>
+    </div>
+</div>
+
+<script>
+    const verbs = [
+        { word: 'учился', tense: 'past' },
+        { word: 'училась', tense: 'past' },
+        { word: 'окончил', tense: 'past' },
+        { word: 'изучала', tense: 'past' },
+        { word: 'работал', tense: 'past' },
+        { word: 'работала', tense: 'past' },
+        { word: 'учусь', tense: 'present' },
+        { word: 'работаю', tense: 'present' },
+        { word: 'преподаю', tense: 'present' },
+        { word: 'изучаю', tense: 'present' },
+        { word: 'рассказываю', tense: 'present' },
+        { word: 'учу', tense: 'present' }
+    ];
+
+    let selectedWord = null;
+    let solvedCount = 0;
+
+    function initGame() {
+        const pool = document.getElementById('wordPool');
+        document.getElementById('pastList').innerHTML = '';
+        document.getElementById('presentList').innerHTML = '';
+        document.getElementById('feedback').textContent = '';
+        document.getElementById('restartBtn').style.display = 'none';
+        document.getElementById('solutionBtn').style.display = 'inline-block';
+        pool.innerHTML = '';
+        solvedCount = 0;
+        selectedWord = null;
+
+        const shuffled = [...verbs].sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            card.textContent = item.word;
+            card.dataset.tense = item.tense;
+            card.onclick = (e) => {
+                e.stopPropagation();
+                selectWord(item, card);
+            };
+            pool.appendChild(card);
+        });
+    }
+
+    function selectWord(item, element) {
+        if (selectedWord) {
+            selectedWord.element.classList.remove('selected');
+        }
+        selectedWord = { item, element };
+        element.classList.add('selected');
+    }
+
+    function assignTo(tense, zoneElement) {
+        if (!selectedWord) return;
+
+        if (selectedWord.item.tense === tense) {
+            placeWord(selectedWord.item.word, tense, false);
+            selectedWord.element.classList.add('hidden');
+            selectedWord = null;
+            solvedCount++;
+            checkWin();
+        } else {
+            zoneElement.classList.add('error-shake');
+            setTimeout(() => zoneElement.classList.remove('error-shake'), 400);
+        }
+    }
+
+    function placeWord(word, tense, isRevealed) {
+        const listId = tense === 'past' ? 'pastList' : 'presentList';
+        const list = document.getElementById(listId);
+        const div = document.createElement('div');
+        div.className = 'placed-word' + (isRevealed ? ' revealed' : '');
+        div.textContent = word;
+        list.prepend(div);
+    }
+
+    function showAllSolutions() {
+        const remainingCards = document.querySelectorAll('.word-card:not(.hidden)');
+        remainingCards.forEach(card => {
+            const word = card.textContent;
+            const tense = card.dataset.tense;
+            placeWord(word, tense, true);
+            card.classList.add('hidden');
+            solvedCount++;
+        });
+        checkWin();
+    }
+
+    function checkWin() {
+        if (solvedCount === verbs.length) {
+            document.getElementById('feedback').textContent = "Fertig! (Готово!)";
+            document.getElementById('solutionBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+        }
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
